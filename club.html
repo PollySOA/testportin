@@ -112,6 +112,7 @@
             <div style="flex: 1">
               <label>Fill 20</label>
               <div class="muted">
+                Vacía la tabla y comprueba que count == 0
                 Llena 20 registros y luego comprueba que count == 20
               </div>
             </div>
@@ -167,26 +168,33 @@
         </div>
 
         <div class="card">
-          <label>Create → Update (no FK) → Delete</label>
+          <label>Create → Update → Delete</label>
           <div class="muted">
             Crea un club (usa idPresidente=1 e idVicepresidente=1 por defecto), lo
             actualiza (campos no FK) y luego lo borra.
           </div>
-          <div style="margin-top: 8px" class="row">
+          <div style="margin-top: 8px">
+            <label for="createNombre">Nombre</label>
             <input
               id="createNombre"
               placeholder="Nombre del club"
               value="Club Prueba API"
             />
           </div>
-          <div style="margin-top: 8px" class="row">
+          <div style="margin-top: 8px">
+            <label for="createDireccion">Dirección</label>
             <input id="createDireccion" placeholder="Dirección" value="Calle Principal 123" />
           </div>
-          <div style="margin-top: 8px" class="row">
+          <div style="margin-top: 8px">
+            <label for="createTelefono">Teléfono</label>
             <input id="createTelefono" placeholder="Teléfono" value="961234567" />
           </div>
-          <div style="margin-top: 8px" class="row">
+          <div style="margin-top: 8px">
+            <label for="createIdPresidente">ID Presidente</label>
             <input id="createIdPresidente" type="number" value="1" placeholder="idPresidente" />
+          </div>
+          <div style="margin-top: 8px">
+            <label for="createIdVicepresidente">ID Vicepresidente</label>
             <input id="createIdVicepresidente" type="number" value="1" placeholder="idVicepresidente" />
           </div>
           <div style="margin-top: 8px">
@@ -203,12 +211,12 @@
       </section>
 
       <p class="muted" style="margin-top: 12px">
-        Notas: Asume que el backend está disponible en <code>http://localhost:8080/club</code>. Para <strong>create</strong> se requieren idPresidente e idVicepresidente — si esos FK no existen, la creación fallará.
+        Notas: Asume que el backend está disponible en <code>http://localhost:8089/club</code>. Para <strong>create</strong> se requieren idPresidente e idVicepresidente — si esos FK no existen, la creación fallará.
       </p>
     </div>
 
     <script>
-      const baseUrl = "http://localhost:8080/club";
+      const baseUrl = "http://127.0.0.1:8089/club";
       const logEl = document.getElementById("log");
       function log(...args) {
         const t = args
@@ -254,11 +262,20 @@
       document
         .getElementById("btnFill20")
         .addEventListener("click", async () => {
-          log("Iniciando fill/20...");
+          log("Iniciando proceso: empty -> fill/20...");
           try {
+            // Vaciar tabla
+            await api("/empty", { method: "DELETE" });
+            log("empty ejecutado");
+            let count = await api("/count", { method: "GET" });
+            log("count after empty:", count);
+            if (count === 0) log("OK: count == 0");
+            else log("FALLO: count != 0 (valor actual: " + count + ")");
+
+            // Llenar 20 registros
             await api("/fill/20", { method: "GET" });
             log("fill/20 ejecutado");
-            const count = await api("/count", { method: "GET" });
+            count = await api("/count", { method: "GET" });
             log("count after fill/20:", count);
             if (count === 20) log("OK: count == 20");
             else log("FALLO: count != 20 (valor actual: " + count + ")");

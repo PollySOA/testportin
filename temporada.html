@@ -111,6 +111,7 @@
             <div style="flex: 1">
               <label>Fill 20</label>
               <div class="muted">
+                Vacía la tabla y comprueba que count == 0
                 Llena 20 registros y luego comprueba que count == 20
               </div>
             </div>
@@ -202,13 +203,13 @@
 
       <p class="muted" style="margin-top: 12px">
   Notas: Asume que el backend está disponible en la misma origen bajo
-  <code>http://localhost:8080/temporada</code>. Para <strong>create</strong> se envía
+  <code>http://localhost:8089/temporada</code>. Para <strong>create</strong> se envía
   <code>descripcion</code> e <code>idClub</code>. El <code>id</code> se genera en el backend.
       </p>
     </div>
 
     <script>
-      const baseUrl = "http://localhost:8080/temporada";
+      const baseUrl = "http://localhost:8089/temporada";
       const logEl = document.getElementById("log");
       function log(...args) {
         const t = args
@@ -241,11 +242,20 @@
       document
         .getElementById("btnFill20")
         .addEventListener("click", async () => {
-          log("Iniciando fill/20...");
+          log("Iniciando proceso: empty -> fill/20...");
           try {
+            // Vaciar tabla
+            const emptied = await api("/empty", { method: "DELETE" });
+            log("empty response:", emptied);
+            let count = await api("/count", { method: "GET" });
+            log("count after empty:", count);
+            if (count === 0) log("OK: count == 0");
+            else log("FALLO: count != 0 (valor actual: " + count + ")");
+
+            // Llenar 20 registros
             const filled = await api("/fill/20", { method: "GET" });
             log("fill/20 response:", filled);
-            const count = await api("/count", { method: "GET" });
+            count = await api("/count", { method: "GET" });
             log("count after fill/20:", count);
             if (count === 20) log("OK: count == 20");
             else log("FALLO: count != 20 (valor actual: " + count + ")");
@@ -367,7 +377,12 @@
             });
             log("CREATE result:", created);
             // El backend puede devolver el id directamente (número) o un objeto con { id }
-            const newId = created && typeof created === "object" ? created.id : created;
+            let newId = null;
+            if (typeof created === "number") {
+              newId = created;
+            } else if (created && created.id) {
+              newId = created.id;
+            }
             if (newId == null) {
               log("FALLO: create no devolvió id");
               return;
@@ -375,7 +390,7 @@
             log("OK: creado id=" + newId);
 
             // Update: cambiar descripcion
-            const updatedPayload = { id: newId, descripcion: descripcion + " - UPDATED" };
+            const updatedPayload = Object.assign({}, typeof created === "object" ? created : { id: newId }, { descripcion: descripcion + " - UPDATED" });
             log("Executing UPDATE for id=" + newId);
             const updated = await api("", {
               method: "PUT",

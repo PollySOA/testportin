@@ -111,8 +111,9 @@
         <div class="card">
           <div class="row">
             <div style="flex: 1">
-              <label>Rellena 20</label>
+              <label>Fill 20</label>
               <div class="muted">
+                Vacía la tabla y comprueba que count == 0
                 Llena 20 registros y luego comprueba que count == 20
               </div>
             </div>
@@ -173,13 +174,18 @@
             Crea un comentario (campos: contenido, idNoticia, idUsuario), lo
             actualiza y luego lo borra.
           </div>
-          <div style="margin-top: 8px" class="row">
+          <div style="margin-top: 8px">
+            <label for="createContenido">Contenido</label>
             <textarea id="createContenido" placeholder="Contenido inicial">
 Prueba comentario API</textarea
             >
           </div>
-          <div style="margin-top: 8px" class="row">
+          <div style="margin-top: 8px">
+            <label for="createIdNoticia">ID Noticia</label>
             <input id="createIdNoticia" type="number" value="1" placeholder="idNoticia" />
+          </div>
+          <div style="margin-top: 8px">
+            <label for="createIdUsuario">ID Usuario</label>
             <input id="createIdUsuario" type="number" value="1" placeholder="idUsuario" />
           </div>
           <div style="margin-top: 8px">
@@ -196,7 +202,7 @@ Prueba comentario API</textarea
       </section>
 
       <p class="muted" style="margin-top: 12px">
-        Notas: Asume que el backend está disponible en <code>http://localhost:8080/comentario</code>. Para <strong>create</strong> se requieren idNoticia e idUsuario — si esos FK no existen, la creación fallará.
+        Notas: Asume que el backend está disponible en <code>http://localhost:8089/comentario</code>. Para <strong>create</strong> se requieren idNoticia e idUsuario — si esos FK no existen, la creación fallará.
       </p>
         defecto para id_articulo e id_usuario — si esos FK no existen, la
         creación puede fallar.
@@ -205,7 +211,7 @@ Prueba comentario API</textarea
 
     <script>
       //const baseUrl = window.location.origin + "/comentario";
-      const baseUrl = "http://localhost:8080/comentario";
+      const baseUrl = "http://localhost:8089/comentario";
       const logEl = document.getElementById("log");
       function log(...args) {
         const t = args
@@ -237,11 +243,20 @@ Prueba comentario API</textarea
       document
         .getElementById("btnFill20")
         .addEventListener("click", async () => {
-          log("Iniciando fill/20...");
+          log("Iniciando proceso: empty -> fill/20...");
           try {
+            // Vaciar tabla
+            const emptied = await api("/empty", { method: "DELETE" });
+            log("empty response:", emptied);
+            let count = await api("/count", { method: "GET" });
+            log("count after empty:", count);
+            if (count === 0) log("OK: count == 0");
+            else log("FALLO: count != 0 (valor actual: " + count + ")");
+
+            // Llenar 20 registros
             const filled = await api("/fill/20", { method: "GET" });
             log("fill/20 response:", filled);
-            const count = await api("/count", { method: "GET" });
+            count = await api("/count", { method: "GET" });
             log("count after fill/20:", count);
             if (count === 20) log("OK: count == 20");
             else log("FALLO: count != 20 (valor actual: " + count + ")");

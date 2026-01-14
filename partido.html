@@ -129,6 +129,7 @@
           <div style="flex: 1">
             <label>Fill 20</label>
             <div class="muted">
+              Vacía la tabla y comprueba que count == 0
               Llena 20 registros y luego comprueba que count == 20
             </div>
           </div>
@@ -180,21 +181,27 @@
       </div>
 
       <div class="card">
-        <label>Create → Update (no FK) → Delete</label>
+        <label>Create → Update → Delete</label>
         <div class="muted">
           Crea un partido (POST inicial envía campos null/0 para obtener id),
           luego actualiza con los valores proporcionados y finalmente lo borra.
         </div>
-        <div style="margin-top: 8px" class="row">
+        <div style="margin-top: 8px">
+          <label for="createRival">Rival</label>
           <input id="createRival" placeholder="Nombre del rival" value="Rival prueba" />
         </div>
-        <div style="margin-top: 8px" class="row">
+        <div style="margin-top: 8px">
+          <label for="createIdLiga">ID Liga</label>
           <input id="createIdLiga" type="number" value="1" />
-          <label style="display:flex;align-items:center;gap:6px;">
-            <input id="createLocal" type="checkbox" checked /> Local
+        </div>
+        <div style="margin-top: 8px">
+          <label for="createLocal" style="display:flex;align-items:center;gap:6px;">
+            <input id="createLocal" type="checkbox" checked />
+            Es Local
           </label>
         </div>
-        <div style="margin-top: 8px" class="row">
+        <div style="margin-top: 8px">
+          <label for="createResultado">Resultado</label>
           <input id="createResultado" placeholder="Resultado (ej. 1-0)" value="0-0" />
         </div>
         <div style="margin-top: 8px">
@@ -218,7 +225,7 @@
 
   <script>
     //const baseUrl = window.location.origin + "/articulo";
-    const baseUrl = "http://localhost:8080/partido";
+    const baseUrl = "http://localhost:8089/partido";
     const logEl = document.getElementById("log");
     function log(...args) {
       const t = args
@@ -251,11 +258,20 @@
     document
       .getElementById("btnFill20")
       .addEventListener("click", async () => {
-        log("Iniciando fill/20...");
+        log("Iniciando proceso: empty -> fill/20...");
         try {
+          // Vaciar tabla
+          const emptied = await api("/empty", { method: "DELETE" });
+          log("empty response:", emptied);
+          let count = await api("/count", { method: "GET" });
+          log("count after empty:", count);
+          if (count === 0) log("OK: count == 0");
+          else log("FALLO: count != 0 (valor actual: " + count + ")");
+
+          // Llenar 20 registros
           const filled = await api("/fill/20", { method: "GET" });
           log("fill/20 response:", filled);
-          const count = await api("/count", { method: "GET" });
+          count = await api("/count", { method: "GET" });
           log("count after fill/20:", count);
           if (count === 20) log("OK: count == 20");
           else log("FALLO: count != 20 (valor actual: " + count + ")");
@@ -360,7 +376,7 @@
       .getElementById("btnCreateUpdateDelete")
       .addEventListener("click", async () => {
         try {
-          // Valores que queremos en la UPDATE (leídos del formulario)
+          // Valores que queremos en el CREATE (leídos del formulario)
           const rival =
             (document.getElementById("createRival") &&
               document.getElementById("createRival").value) ||
@@ -383,39 +399,38 @@
             "0-0";
 
           log(
-            "Iniciando proceso: FILL/1 -> GET (obtener id) -> PUT (valores) -> GET -> DELETE"
+            "Iniciando proceso: CREATE (POST) -> PUT (actualizar) -> GET (verificar) -> DELETE"
           );
 
-          // Usar fill/1 para crear un partido con valores válidos
-          const countBefore = await api("/count", { method: "GET" });
-          log("Count antes de crear:", countBefore);
+          // CREATE: devuelve objeto creado con id
+          log("Iniciando CREATE con rival=" + rival + ", idLiga=" + idLiga);
+          const createPayload = { rival, idLiga, local, resultado };
+          const created = await api("", {
+            method: "POST",
+            body: JSON.stringify(createPayload),
+          });
+          log("CREATE result:", created);
 
-          await api("/fill/1", { method: "GET" });
-          log("Partido creado con fill/1");
-
-          // Obtener el último partido creado
-          const page = await api("?page=0&size=1&sort=id,desc", { method: "GET" });
-          if (!page.content || page.content.length === 0) {
-            log("FALLO: no se pudo obtener el partido recién creado");
+          if (!created || !created.id) {
+            log("FALLO: create no devolvió objeto válido con id");
             return;
           }
-          const newId = page.content[0].id;
+          const newId = created.id;
           log("OK: partido creado con id=" + newId);
 
-          // PUT update: ahora enviamos los valores reales (incluyendo id)
-          const updatedPayload = {
-            id: newId,
+          // PUT update: ahora enviamos el objeto actualizado con todos sus campos
+          const updatedPayload = Object.assign({}, created, {
             rival: rival,
             idLiga: idLiga,
             local: local,
             resultado: resultado,
-          };
+          });
           log("Executing UPDATE for id=" + newId, updatedPayload);
-          const updated = await api("/" + newId, {
+          const updated = await api("", {
             method: "PUT",
             body: JSON.stringify(updatedPayload),
           });
-          log("UPDATE result (id retornado):", updated);
+          log("UPDATE result:", updated);
 
           // Comprobar que los campos han cambiado
           const after = await api("/" + newId, { method: "GET" });

@@ -113,6 +113,7 @@
             <div style="flex: 1">
               <label>Fill 20</label>
               <div class="muted">
+                Vacía la tabla y comprueba que count == 0
                 Llena 20 registros y luego comprueba que count == 20
               </div>
             </div>
@@ -166,18 +167,25 @@
             <button id="btnGetPage">GetPage</button>
           </div>
         </div>
-
         <div class="card">
           <label>Create → Update → Delete</label>
           <div class="muted">
             Crea una compra (cantidad, precio, idArticulo, idFactura), la actualiza y luego la borra.
           </div>
-          <div style="margin-top: 8px" class="row">
+          <div style="margin-top: 8px">
+            <label for="createCantidad">Cantidad</label>
             <input id="createCantidad" type="number" placeholder="Cantidad" value="2" />
+          </div>
+          <div style="margin-top: 8px">
+            <label for="createPrecio">Precio</label>
             <input id="createPrecio" type="number" step="0.01" placeholder="Precio" value="9.99" />
           </div>
-          <div style="margin-top: 8px" class="row">
+          <div style="margin-top: 8px">
+            <label for="createIdArticulo">ID Artículo</label>
             <input id="createIdArticulo" type="number" placeholder="idArticulo" value="1" />
+          </div>
+          <div style="margin-top: 8px">
+            <label for="createIdFactura">ID Factura</label>
             <input id="createIdFactura" type="number" placeholder="idFactura" value="1" />
           </div>
           <div style="margin-top: 8px">
@@ -192,13 +200,13 @@
       </section>
 
       <p class="muted" style="margin-top: 12px">
-        Notas: Asume que el backend está disponible en <code>http://localhost:8080/compra</code>. Para <strong>create</strong> se requieren idArticulo e idFactura — si esos FK no existen, la creación fallará.
+        Notas: Asume que el backend está disponible en <code>http://localhost:8089/compra</code>. Para <strong>create</strong> se requieren idArticulo e idFactura — si esos FK no existen, la creación fallará.
       </p>
     </div>
 
     <script>
       //const baseUrl = window.location.origin + "/compra";
-      const baseUrl = "http://localhost:8080/compra";
+      const baseUrl = "http://localhost:8089/compra";
       const logEl = document.getElementById("log");
 
       function log(...args) {
@@ -230,11 +238,20 @@
 
       // Fill 20 then count == 20
       document.getElementById("btnFill20").addEventListener("click", async () => {
-        log("Iniciando fill/20...");
+        log("Iniciando proceso: empty -> fill/20...");
         try {
+          // Vaciar tabla
+          const emptied = await api("/empty", { method: "DELETE" });
+          log("empty response:", emptied);
+          let count = await api("/count", { method: "GET" });
+          log("count after empty:", count);
+          if (count === 0) log("OK: count == 0");
+          else log("FALLO: count != 0 (valor actual: " + count + ")");
+
+          // Llenar 20 registros
           const filled = await api("/fill/20", { method: "GET" });
           log("fill/20 response:", filled);
-          const count = await api("/count", { method: "GET" });
+          count = await api("/count", { method: "GET" });
           log("count after fill/20:", count);
           if (count === 20) log("OK: count == 20");
           else log("FALLO: count != 20 (valor actual: " + count + ")");
@@ -336,30 +353,30 @@
           const idArticulo = Number(document.getElementById("createIdArticulo").value || 1);
           const idFactura = Number(document.getElementById("createIdFactura").value || 1);
 
-          // CREATE: devuelve Long (id)
+          // CREATE: devuelve objeto creado con id
           log('Iniciando CREATE (POST /compra) con cantidad=' + cantidad + ', precio=' + precio);
           const createPayload = { cantidad, precio, idArticulo, idFactura };
-          const createdId = await api("", {
+          const created = await api("", {
             method: "POST",
             body: JSON.stringify(createPayload),
           });
-          log("CREATE result (id):", createdId);
+          log("CREATE result:", created);
 
-          const newId = Number(createdId);
-          if (!Number.isFinite(newId) || newId <= 0) {
-            log("FALLO: create no devolvió un id válido");
+          if (!created || !created.id) {
+            log("FALLO: create no devolvió objeto válido con id");
             return;
           }
+          const newId = created.id;
           log("OK: creado id=" + newId);
 
-          // UPDATE: PUT con {id, cantidad, precio, idArticulo, idFactura}; devuelve Long (id)
-          const updatedPayload = { id: newId, cantidad: cantidad + 1, precio: precio + 1, idArticulo, idFactura };
+          // UPDATE: PUT con objeto actualizado; devuelve objeto actualizado
+          const updatedPayload = Object.assign({}, created, { cantidad: cantidad + 1, precio: precio + 1 });
           log("Executing UPDATE for id=" + newId);
-          const updatedId = await api("", {
+          const updated = await api("", {
             method: "PUT",
             body: JSON.stringify(updatedPayload),
           });
-          log("UPDATE result (id):", updatedId);
+          log("UPDATE result:", updated);
 
           // Comprobar UPDATE
           const after = await api("/" + newId, { method: "GET" });
@@ -372,10 +389,10 @@
           ) log("OK: cantidad y precio actualizados correctamente");
           else log("FALLO: revisa los campos, campos no actualizados");
 
-          // DELETE: devuelve Long (id)
+          // DELETE: devuelve id o null
           log("Deleting id=" + newId);
-          const delId = await api("/" + newId, { method: "DELETE" });
-          log("DELETE result (id):", delId);
+          const del = await api("/" + newId, { method: "DELETE" });
+          log("DELETE result:", del);
 
           // Comprobar DELETE (espera 404)
           try {

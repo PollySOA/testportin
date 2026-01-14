@@ -112,6 +112,7 @@
             <div style="flex: 1">
               <label>Fill 20</label>
               <div class="muted">
+                Vacía la tabla y comprueba que count == 0
                 Llena 20 registros y luego comprueba que count == 20
               </div>
             </div>
@@ -167,28 +168,35 @@
         </div>
 
         <div class="card">
-          <label>Create → Update (no FK) → Delete</label>
+          <label>Create → Update → Delete</label>
           <div class="muted">
             Crea un jugador (usa idUsuario=1 e idEquipo=1 por defecto), lo
             actualiza (posición, dorsal) y luego lo borra.
           </div>
-          <div style="margin-top: 8px" class="row">
+          <div style="margin-top: 8px">
+            <label for="createPosicion">Posición</label>
             <input
               id="createPosicion"
               placeholder="Posición inicial"
               value="Prueba API"
             />
           </div>
-          <div style="margin-top: 8px" class="row">
+          <div style="margin-top: 8px">
+            <label for="createDorsal">Dorsal</label>
             <input id="createDorsal" type="number" min="1" max="99" step="1" value="10" />
-            <input
-              id="createCapitan"
-              type="checkbox"
-            />
-            <label for="createCapitan">es capitan</label>
           </div>
-          <div style="margin-top: 8px" class="row">
+          <div style="margin-top: 8px">
+            <label for="createCapitan" style="display:flex;align-items:center;gap:6px;">
+              <input id="createCapitan" type="checkbox" />
+              Es Capitán
+            </label>
+          </div>
+          <div style="margin-top: 8px">
+            <label for="createIdUsuario">ID Usuario</label>
             <input id="createIdUsuario" type="number" value="1" placeholder="idUsuario" />
+          </div>
+          <div style="margin-top: 8px">
+            <label for="createIdEquipo">ID Equipo</label>
             <input id="createIdEquipo" type="number" value="1" placeholder="idEquipo" />
           </div>
           <div style="margin-top: 8px">
@@ -205,7 +213,7 @@
       </section>
 
       <p class="muted" style="margin-top: 12px">
-        Notas: Asume que el backend está disponible en <code>http://localhost:8080/jugador</code>. Para <strong>create</strong> usa
+        Notas: Asume que el backend está disponible en <code>http://localhost:8089/jugador</code>. Para <strong>create</strong> usa
         idUsuario=1 e idEquipo=1 por defecto — si esos FK no existen, la
         creación fallará.
       </p>
@@ -213,7 +221,7 @@
 
     <script>
       //const baseUrl = window.location.origin + "/jugador";
-      const baseUrl = "http://localhost:8080/jugador";
+      const baseUrl = "http://localhost:8089/jugador";
       const logEl = document.getElementById("log");
       function log(...args) {
         const t = args
@@ -246,11 +254,20 @@
       document
         .getElementById("btnFill20")
         .addEventListener("click", async () => {
-          log("Iniciando fill/20...");
+          log("Iniciando proceso: empty -> fill/20...");
           try {
-            const filled = await api("/rellena/20", { method: "GET" });
+            // Vaciar tabla
+            const emptied = await api("/empty", { method: "DELETE" });
+            log("empty response:", emptied);
+            let count = await api("/count", { method: "GET" });
+            log("count after empty:", count);
+            if (count === 0) log("OK: count == 0");
+            else log("FALLO: count != 0 (valor actual: " + count + ")");
+
+            // Llenar 20 registros
+            const filled = await api("/fill/20", { method: "GET" });
             log("fill/20 response:", filled);
-            const count = await api("/count", { method: "GET" });
+            count = await api("/count", { method: "GET" });
             log("count after fill/20:", count);
             if (count === 20) log("OK: count == 20");
             else log("FALLO: count != 20 (valor actual: " + count + ")");

@@ -138,6 +138,7 @@
           <div style="flex: 1">
             <label>Fill 20</label>
             <div class="muted">
+              Vacía la tabla y comprueba que count == 0
               Llena 20 registros y luego comprueba que count == 20
             </div>
           </div>
@@ -189,7 +190,7 @@
       </div>
 
       <div class="card">
-        <label>Create → Update (no FK) → Delete</label>
+        <label>Create → Update → Delete</label>
         <div class="muted">
           Crea un tipo artículo (usa idClub=1 por defecto), lo
           actualiza (campos no FK) y luego lo borra.
@@ -199,7 +200,7 @@
           <input id="createDescripcion" placeholder="Descripción inicial" value="Tipo Test" />
         </div>
         <div style="margin-top: 8px">
-          <label for="createIdClub">idClub</label>
+          <label for="createIdClub">ID Club</label>
           <input id="createIdClub" type="number" value="1" />
         </div>
         <div style="margin-top: 8px">
@@ -218,7 +219,7 @@
 
     <p class="muted" style="margin-top: 12px">
       Notas: Asume que el backend está disponible en
-      <code>http://localhost:8080/tipoarticulo</code>. Para <strong>create</strong> uso
+      <code>http://localhost:8089/tipoarticulo</code>. Para <strong>create</strong> uso
       idClub=1 por defecto — si ese FK no existe, la creación fallará.
     </p>
   </div>
@@ -226,7 +227,7 @@
   
   <script>
     // dirección del servidor donde está la API
-    const baseUrl = "http://localhost:8080/tipoarticulo";
+    const baseUrl = "http://localhost:8089/tipoarticulo";
     const logEl = document.getElementById("log");
     // función para escribir mensajes en el área de logs
     function log(...args) {
@@ -261,11 +262,20 @@
     document
       .getElementById("btnFill20")
       .addEventListener("click", async () => {
-        log("Iniciando fill/20...");
+        log("Iniciando proceso: empty -> fill/20...");
         try {
+          // Vaciar tabla
+          const emptied = await api("/empty", { method: "DELETE" });
+          log("empty response:", emptied);
+          let count = await api("/count", { method: "GET" });
+          log("count after empty:", count);
+          if (count === 0) log("OK: count == 0");
+          else log("FALLO: count != 0 (valor actual: " + count + ")");
+
+          // Llenar 20 registros
           const filled = await api("/fill/20", { method: "GET" });
           log("fill/20 response:", filled);
-          const count = await api("/count", { method: "GET" });
+          count = await api("/count", { method: "GET" });
           log("count after fill/20:", count);
           if (count === 20) log("OK: count == 20");
           else log("FALLO: count != 20 (valor actual: " + count + ")");
@@ -401,11 +411,9 @@
           log("OK: creado id=" + newId);
 
           // ahora lo actualizamos cambiando la descripción
-          const updatedPayload = {
-            id: newId,
+          const updatedPayload = Object.assign({}, created, {
             descripcion: descripcion + " UPDATED",
-            idClub: idClub,
-          };
+          });
           log("Executing UPDATE for id=" + newId);
           const updated = await api("", {
             method: "PUT",

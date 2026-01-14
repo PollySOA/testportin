@@ -112,6 +112,7 @@
             <div style="flex: 1">
               <label>Fill 20</label>
               <div class="muted">
+                Vacía la tabla y comprueba que count == 0
                 Llena 20 registros y luego comprueba que count == 20
               </div>
             </div>
@@ -167,11 +168,12 @@
         </div>
 
         <div class="card">
-          <label>Create → Update (no FK) → Delete</label>
+          <label>Create → Update → Delete</label>
           <div class="muted">
             Crea una puntuación (usa idUsuario=1 e idNoticia=1 por defecto), la actualiza (campo puntuacion) y luego la borra.
           </div>
-          <div style="margin-top: 8px" class="row">
+          <div style="margin-top: 8px">
+            <label for="createPuntuacion">Puntuación</label>
             <input
               id="createPuntuacion"
               type="number"
@@ -181,8 +183,12 @@
               max="5"
             />
           </div>
-          <div style="margin-top: 8px" class="row">
+          <div style="margin-top: 8px">
+            <label for="createIdUsuario">ID Usuario</label>
             <input id="createIdUsuario" type="number" placeholder="idUsuario" value="1" />
+          </div>
+          <div style="margin-top: 8px">
+            <label for="createIdNoticia">ID Noticia</label>
             <input id="createIdNoticia" type="number" placeholder="idNoticia" value="1" />
           </div>
           <div style="margin-top: 8px">
@@ -200,14 +206,14 @@
 
       <p class="muted" style="margin-top: 12px">
         Notas: Asume que el backend está disponible en
-        <code>http://localhost:8080/puntuacion</code>. Para <strong>create</strong> usa
+        <code>http://localhost:8089/puntuacion</code>. Para <strong>create</strong> usa
         idUsuario=1 e idNoticia=1 por defecto — si esos FK no existen, la
         creación fallará.
       </p>
     </div>
 
     <script>
-      const baseUrl = "http://localhost:8080/puntuacion";
+      const baseUrl = "http://localhost:8089/puntuacion";
       const logEl = document.getElementById("log");
       function log(...args) {
         const t = args
@@ -240,11 +246,20 @@
       document
         .getElementById("btnFill20")
         .addEventListener("click", async () => {
-          log("Iniciando fill/20...");
+          log("Iniciando proceso: empty -> fill/20...");
           try {
+            // Vaciar tabla
+            const emptied = await api("/empty", { method: "DELETE" });
+            log("empty response:", emptied);
+            let count = await api("/count", { method: "GET" });
+            log("count after empty:", count);
+            if (count === 0) log("OK: count == 0");
+            else log("FALLO: count != 0 (valor actual: " + count + ")");
+
+            // Llenar 20 registros
             const filled = await api("/fill/20", { method: "GET" });
             log("fill/20 response:", filled);
-            const count = await api("/count", { method: "GET" });
+            count = await api("/count", { method: "GET" });
             log("count after fill/20:", count);
             if (count === 20) log("OK: count == 20");
             else log("FALLO: count != 20 (valor actual: " + count + ")");
@@ -363,27 +378,24 @@
               idUsuario,
               idNoticia
             };
-            const createdId = await api("", {
+            const created = await api("", {
               method: "POST",
               body: JSON.stringify(createPayload),
             });
-            log("CREATE result (id):", createdId);
-            if (!createdId) {
-              log("FALLO: create no devolvió id");
+            log("CREATE result:", created);
+            if (!created || !created.id) {
+              log("FALLO: create no devolvió objeto válido con id");
               return;
             }
-            log("OK: creado id=" + createdId);
-
-            // Obtener el registro recién creado
-            const created = await api("/" + createdId, { method: "GET" });
-            log("GET after create:", created);
+            const newId = created.id;
+            log("OK: creado id=" + newId);
 
             // Update: cambiar campo puntuacion (no FK)
             const newPuntuacion = puntuacion === 5 ? 4 : 5;
             const updatedPayload = Object.assign({}, created, {
               puntuacion: newPuntuacion
             });
-            log("Executing UPDATE for id=" + createdId + " (cambiar puntuacion a " + newPuntuacion + ")");
+            log("Executing UPDATE for id=" + newId + " (cambiar puntuacion a " + newPuntuacion + ")");
             const updated = await api("", {
               method: "PUT",
               body: JSON.stringify(updatedPayload),
@@ -391,7 +403,7 @@
             log("UPDATE result:", updated);
 
             // Comprobar que el campo ha cambiado (no FK)
-            const after = await api("/" + createdId, { method: "GET" });
+            const after = await api("/" + newId, { method: "GET" });
             log("GET after update:", after);
             let okUpdate = true;
             if (Number(after.puntuacion) !== Number(newPuntuacion)) {
@@ -409,8 +421,8 @@
             if (okUpdate) log("OK: campo puntuacion (no FK) actualizado correctamente");
 
             // Delete
-            log("Deleting id=" + createdId);
-            const del = await api("/" + createdId, { method: "DELETE" });
+            log("Deleting id=" + newId);
+            const del = await api("/" + newId, { method: "DELETE" });
             log("DELETE result:", del);
             // Comprobar no existe
             try {

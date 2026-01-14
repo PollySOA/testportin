@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Pruebas API Tipo Usuario</title>
+    <style>
+      :root {
+        --bg: #f7f9fc;
+        --card: #fff;
+        --accent: #0b74de;
+        --muted: #666;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        font-family: Inter, system-ui, Segoe UI, Roboto, Arial;
+        margin: 0;
+        background: var(--bg);
+        color: #111;
+      }
+      .wrap {
+        max-width: 980px;
+        margin: 24px auto;
+        padding: 16px;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      h1 {
+        font-size: 1.1rem;
+        margin: 0;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 12px;
+        margin-top: 16px;
+      }
+      .card {
+        background: var(--card);
+        padding: 12px;
+        border-radius: 10px;
+        box-shadow: 0 1px 4px rgba(12, 20, 30, 0.06);
+      }
+      button {
+        appearance: none;
+        border: 0;
+        background: var(--accent);
+        color: white;
+        padding: 10px 12px;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+      button.secondary {
+        background: #666;
+      }
+      label {
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+      input,
+      select {
+        width: 100%;
+        padding: 8px;
+        border-radius: 8px;
+        border: 1px solid #e3e7ee;
+        margin-top: 6px;
+      }
+      pre {
+        background: #0f1724;
+        color: #e6eef8;
+        padding: 12px;
+        border-radius: 8px;
+        overflow: auto;
+        font-size: 0.85rem;
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      @media (max-width: 520px) {
+        header {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="wrap">
+      <header>
+        <h1>Pruebas de la API: /tipousuario</h1>
+        <div class="muted">
+          Este fichero realiza llamadas a los endpoints de Tipo de Usuario y muestra
+          comprobaciones básicas.
+        </div>
+      </header>
+
+      <div class="grid">
+        <div class="card">
+          <div class="row">
+            <div style="flex: 1">
+              <label>Fill (tipos predeterminados)</label>
+              <div class="muted">
+                Rellena la tabla con tipos de usuario predeterminados (Admin, Jugador, Entrenador, etc.)
+              </div>
+            </div>
+            <div><button id="btnFill">Fill</button></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="row">
+            <div style="flex: 1">
+              <label>Empty</label>
+              <div class="muted">Vacía la tabla y comprueba que count == 0</div>
+            </div>
+            <div><button id="btnEmpty" class="secondary">Empty</button></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <label>Get by id</label>
+          <input
+            id="inputGetId"
+            type="number"
+            placeholder="id a obtener (ej. 1)"
+          />
+          <div style="margin-top: 8px" class="row">
+            <button id="btnGet">Get(id) y comprobar</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <label>Get all (sin paginación)</label>
+          <div class="muted">
+            Obtiene todos los tipos de usuario disponibles (nota: endpoint diferente, sin paginación)
+          </div>
+          <div style="margin-top: 8px">
+            <button id="btnGetAll">Get all tipousuario</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <label>Get count</label>
+          <div class="muted">
+            Cuenta el total de tipos de usuario registrados
+          </div>
+          <div style="margin-top: 8px">
+            <button id="btnCount">Get count</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <label>Create → Update → Delete</label>
+          <div class="muted">
+            Crea un tipo de usuario, lo actualiza y luego lo borra.
+          </div>
+          <div style="margin-top: 8px">
+            <label for="createDescripcion">Descripción</label>
+            <input
+              id="createDescripcion"
+              placeholder="Descripción inicial"
+              value="Tipo Prueba"
+            />
+          </div>
+          <div style="margin-top: 8px">
+            <button id="btnCreateUpdateDelete">
+              Ejecutar proceso completo
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <section style="margin-top: 16px" class="card">
+        <h3 style="margin: 0 0 8px 0">Logs / Resultados</h3>
+        <pre id="log">Listo.</pre>
+      </section>
+
+      <p class="muted" style="margin-top: 12px">
+        Notas: Asume que el backend está disponible en <code>http://localhost:8089/tipousuario</code>. Este endpoint es simple: solo tiene campo descripción (id autogenerado).
+      </p>
+    </div>
+
+    <script>
+      const baseUrl = "http://127.0.0.1:8089/tipousuario";
+      const logEl = document.getElementById("log");
+
+      function log(...args) {
+        const t = args
+          .map((a) =>
+            typeof a === "object" ? JSON.stringify(a, null, 2) : String(a)
+          )
+          .join(" ");
+        logEl.textContent = t + "\n\n" + logEl.textContent;
+      }
+
+      async function api(path, options) {
+        const res = await fetch(
+          baseUrl + path,
+          Object.assign({ headers: { "Content-Type": "application/json" } }, options)
+        );
+        const text = await res.text();
+
+        let data = null;
+        try {
+          data = text && text.length ? JSON.parse(text) : null;
+        } catch {
+          data = text;
+        }
+
+        if (!res.ok) throw { status: res.status, body: data };
+        return data;
+      }
+
+      document.getElementById("btnFill").addEventListener("click", async () => {
+        log("Iniciando fill (carga tipos predeterminados)...");
+        try {
+          const result = await api("/fill", { method: "GET" });
+          log("fill response:", result);
+          const count = await api("/count", { method: "GET" });
+          log("count after fill:", count);
+          if (count > 0) log("OK: se crearon tipos de usuario predeterminados");
+          else log("FALLO: no se crearon tipos");
+        } catch (e) {
+          log("Error en fill:", e);
+        }
+      });
+
+      document.getElementById("btnEmpty").addEventListener("click", async () => {
+        log("Iniciando empty...");
+        try {
+          const emptied = await api("/empty", { method: "DELETE" });
+          log("empty response:", emptied);
+          const count = await api("/count", { method: "GET" });
+          log("count after empty:", count);
+          if (count === 0) log("OK: count == 0");
+          else log("FALLO: count != 0 (valor actual: " + count + ")");
+        } catch (e) {
+          log("Error en empty:", e);
+        }
+      });
+
+      document.getElementById("btnGet").addEventListener("click", async () => {
+        const idRaw = document.getElementById("inputGetId").value;
+        const id = Number(idRaw);
+        if (!Number.isFinite(id) || id <= 0) {
+          log("Introduce un id válido (> 0)");
+          return;
+        }
+        log("GET /tipousuario/" + id);
+        try {
+          const data = await api("/" + id, { method: "GET" });
+          log("GET result:", data);
+          if (data && Number(data.id) === id) log("OK: id devuelto coincide con el solicitado");
+          else log("FALLO: id devuelto no coincide");
+        } catch (e) {
+          log("Error en GET:", e);
+        }
+      });
+
+      document.getElementById("btnGetAll").addEventListener("click", async () => {
+        log("GET /tipousuario (all, sin paginación)");
+        try {
+          const data = await api("", { method: "GET" });
+          log("GET all result:", data);
+          if (Array.isArray(data)) {
+            log("OK: se devolvió un array con " + data.length + " tipos de usuario");
+          } else {
+            log("Respuesta:", data);
+          }
+        } catch (e) {
+          log("Error en GET all:", e);
+        }
+      });
+
+      document.getElementById("btnCount").addEventListener("click", async () => {
+        log("GET /tipousuario/count");
+        try {
+          const count = await api("/count", { method: "GET" });
+          log("count result:", count);
+          if (typeof count === "number") log("OK: total de tipos = " + count);
+          else log("Respuesta:", count);
+        } catch (e) {
+          log("Error en count:", e);
+        }
+      });
+
+      document.getElementById("btnCreateUpdateDelete").addEventListener("click", async () => {
+        try {
+          const descripcion = (document.getElementById("createDescripcion").value || "Tipo Prueba").trim();
+
+          log('Iniciando CREATE (POST /tipousuario) con descripcion="' + descripcion + '"');
+          const createPayload = { descripcion };
+          const created = await api("", {
+            method: "POST",
+            body: JSON.stringify(createPayload),
+          });
+          log("CREATE result:", created);
+
+          if (!created || !created.id) {
+            log("FALLO: create no devolvió objeto válido con id");
+            return;
+          }
+          const newId = created.id;
+          log("OK: creado id=" + newId);
+
+          const updatedPayload = Object.assign({}, created, { descripcion: descripcion + " - UPDATED" });
+          log("Executing UPDATE for id=" + newId);
+          const updated = await api("", {
+            method: "PUT",
+            body: JSON.stringify(updatedPayload),
+          });
+          log("UPDATE result:", updated);
+
+          const after = await api("/" + newId, { method: "GET" });
+          log("GET after update:", after);
+
+          if (after && after.descripcion === updatedPayload.descripcion) log("OK: descripción actualizada correctamente");
+          else log("FALLO: descripción no actualizada");
+
+          log("Deleting id=" + newId);
+          const del = await api("/" + newId, { method: "DELETE" });
+          log("DELETE result:", del);
+
+          try {
+            await api("/" + newId, { method: "GET" });
+            log("FALLO: registro aun existe despues de delete");
+          } catch (err) {
+            if (err && err.status === 404) log("OK: registro eliminado y GET devuelve 404");
+            else log("Respuesta al comprobar delete (no 404):", err);
+          }
+        } catch (e) {
+          log("Error en proceso Create/Update/Delete:", e);
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -298,7 +298,7 @@
         .addEventListener("click", async () => {
           log("Iniciando fill/100...");
           try {
-            const filled = await api("/rellena/100", { method: "GET" });
+            const filled = await api("/fill/100", { method: "GET" });
             log("fill/100 response:", filled);
             const count = await api("/count", { method: "GET" });
             log("count after fill/100:", count);
